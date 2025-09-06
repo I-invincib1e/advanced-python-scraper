@@ -279,6 +279,18 @@ a:hover {{ text-decoration:underline; }}
 
                 # Save the HTML content
                 filename = url.split('/')[-1] or 'index.html'
+
+                # Clean filename - remove URL fragments and ensure proper extension
+                if '#' in filename:
+                    filename = filename.split('#')[0]
+
+                # Ensure .html extension
+                if not filename.endswith(('.html', '.htm')):
+                    filename += '.html'
+
+                # Clean any remaining invalid characters
+                filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+
                 filepath = os.path.join(self.output_dir, filename)
 
                 with open(filepath, 'w', encoding='utf-8') as f:
