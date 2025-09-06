@@ -133,11 +133,11 @@ Create a `scraper_config.json`:
 
 ## 🎯 **Backend Comparison**
 
-| Backend | Speed | JS Support | Use Case |
-|---------|-------|------------|----------|
-| **aiohttp** | ⚡⚡⚡ | ❌ | Static sites, APIs |
-| **requests-html** | ⚡⚡ | ✅ | Simple JS sites |
-| **playwright** | ⚡ | ✅✅✅ | Complex SPAs |
+| Backend | Speed | JS Support | Maintenance | Use Case |
+|---------|-------|------------|-------------|----------|
+| **aiohttp** | ⚡⚡⚡ | ❌ | ✅ Active | Static sites, APIs |
+| **requests-html** | ⚡⚡ | ✅ | ❌ Unmaintained | Legacy JS sites |
+| **playwright** | ⚡ | ✅✅✅ | ✅ Active | **Recommended for JS sites** |
 
 ## 📊 **Performance Results**
 
