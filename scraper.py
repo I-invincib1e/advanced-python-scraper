@@ -332,12 +332,23 @@ a:hover {{ text-decoration:underline; }}
         print("="*50)
 
 async def main():
-    base_url = "https://inventwithpython.com/bigbookpython/"
-    # Use None to auto-generate organized directory structure
-    output_dir = None
+    print("🚀 Advanced Python Web Scraper")
+    print("=" * 50)
+
+    # Get base URL from user
+    base_url = input("Enter the website URL to scrape: ").strip()
+    if not base_url:
+        print("❌ No URL provided. Exiting...")
+        return
+
+    # Ensure URL has protocol
+    if not base_url.startswith(('http://', 'https://')):
+        base_url = 'https://' + base_url
+
+    print(f"📍 Target URL: {base_url}")
 
     # Backend selection
-    print("Available backends:")
+    print("\n🔧 Available backends:")
     print("1. aiohttp (default) - Fast for static sites")
     print("2. playwright - Recommended for JavaScript sites")
     backend_choice = input("Choose backend (1 or 2, press Enter for default): ").strip()
@@ -350,16 +361,19 @@ async def main():
             print("Falling back to aiohttp...")
             backend = 'aiohttp'
 
-    print(f"Using backend: {backend}")
+    print(f"✅ Using backend: {backend}")
 
-    async with BookScraper(base_url, output_dir, backend=backend) as scraper:
-        print("Book Scraper - All-in-One Solution")
-        print("="*40)
+    # Auto-generate output directory from site name
+    async with BookScraper(base_url, backend=backend) as scraper:
+        print(f"📁 Output directory: {scraper.output_dir}")
 
         # Option 1: Scrape single page
-        single_page = input("Enter a single page URL to scrape (or press Enter to skip): ").strip()
+        single_page = input("\n🔗 Enter a single page URL to scrape (or press Enter to scrape homepage): ").strip()
         if single_page:
-            print(f"Scraping single page: {single_page}")
+            if not single_page.startswith(('http://', 'https://')):
+                single_page = base_url.rstrip('/') + '/' + single_page.lstrip('/')
+
+            print(f"📄 Scraping single page: {single_page}")
             content = await scraper.scrape_single_page(single_page)
             if content:
                 formatted_content = scraper._format_html_content("Single Page", content)
@@ -368,35 +382,93 @@ async def main():
                 os.makedirs(scraper.output_dir, exist_ok=True)
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(formatted_content)
-                print(f"Saved to: {filepath}")
+                print(f"✅ Saved to: {filepath}")
+            else:
+                print("❌ Failed to scrape the page")
             return
 
-        # Option 2: Scrape from homepage
-        scrape_home = input("Scrape homepage and extract chapter links? (y/n): ").lower().strip()
-        if scrape_home != 'y':
-            print("Exiting...")
-            return
+        # Option 2: Scrape from homepage with ALL links
+        print("🏠 Scraping homepage to find all available content...")
 
-        print("Scraping homepage...")
         home_content = await scraper.scrape_single_page(base_url)
         if not home_content:
-            print("Failed to scrape homepage")
+            print("❌ Failed to scrape homepage")
             return
 
-        chapter_links = scraper.extract_chapter_links(home_content)
-        chapter_links.insert(0, ('Home', base_url))  # Add homepage
+        print("🔍 Analyzing homepage for links...")
 
-        print(f"Found {len(chapter_links)} pages to scrape")
-        confirm = input("Proceed with scraping all pages? (y/n): ").lower().strip()
+        # Extract ALL links from the page
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(home_content, 'html.parser')
+        all_links = soup.find_all('a', href=True)
+
+        # Filter for substantial content links
+        content_links = []
+        for link in all_links:
+            href = link['href']
+            text = link.text.strip()
+
+            # Skip if href is empty or just '#'
+            if not href or href == '#':
+                continue
+
+            # Convert relative URLs to absolute
+            if not href.startswith(('http://', 'https://')):
+                href = urljoin(base_url, href)
+
+            # Skip external links (different domain)
+            if urlparse(href).netloc != urlparse(base_url).netloc:
+                continue
+
+            # Skip very short text or navigation links
+            if len(text) < 3:
+                continue
+
+            # Skip common non-content links
+            skip_patterns = ['home', 'index', 'contact', 'about', 'privacy', 'terms']
+            if any(pattern in text.lower() for pattern in skip_patterns):
+                continue
+
+            content_links.append((text, href))
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_links = []
+        for text, href in content_links:
+            if href not in seen:
+                seen.add(href)
+                unique_links.append((text, href))
+
+        print(f"📚 Found {len(unique_links)} content pages to scrape")
+
+        if not unique_links:
+            print("❌ No content links found on the homepage")
+            return
+
+        # Show sample of what will be scraped
+        print("\n📖 Sample of content to be scraped:")
+        for i, (title, url) in enumerate(unique_links[:5], 1):
+            print(f"{i}. {title[:50]}...")
+        if len(unique_links) > 5:
+            print(f"... and {len(unique_links) - 5} more pages")
+
+        # Confirm scraping ALL pages
+        print(f"\n⚠️  This will scrape ALL {len(unique_links)} pages found on the site")
+        confirm = input("Proceed with scraping ALL pages? (y/n): ").lower().strip()
         if confirm != 'y':
-            print("Cancelled")
+            print("❌ Scraping cancelled")
             return
+
+        print(f"\n🚀 Starting comprehensive scrape of {len(unique_links)} pages...")
+        print("This may take some time depending on the site size and your connection...")
 
         start_time = time.time()
-        await scraper.scrape_multiple_pages(chapter_links)
+        await scraper.scrape_multiple_pages(unique_links)
         scraper.print_metrics()
 
-        print(f"\nScraping completed! Files saved in: {scraper.output_dir}")
+        print(f"\n🎉 Scraping completed successfully!")
+        print(f"📁 All files saved in: {scraper.output_dir}")
+        print(f"⏱️  Total time: {time.time() - start_time:.1f} seconds")
 
 if __name__ == "__main__":
     asyncio.run(main())
