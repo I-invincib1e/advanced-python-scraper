@@ -12,6 +12,14 @@ from urllib.parse import urljoin, urlparse
 from dataclasses import dataclass
 from tqdm.asyncio import tqdm
 
+# Optional Playwright support
+try:
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    async_playwright = None
+
 @dataclass
 class ScrapeMetrics:
     total_pages: int = 0
@@ -22,11 +30,17 @@ class ScrapeMetrics:
     total_size_mb: float = 0.0
 
 class BookScraper:
-    def __init__(self, base_url: str, output_dir: str = None, max_concurrent: int = 10, config_file: str = None):
+    def __init__(self, base_url: str, output_dir: str = None, max_concurrent: int = 10, config_file: str = None, backend: str = 'aiohttp'):
         self.base_url = base_url
         self.max_concurrent = max_concurrent
+        self.backend = backend.lower()
         self.metrics = ScrapeMetrics()
         self.session: Optional[aiohttp.ClientSession] = None
+
+        # Playwright components (if using playwright backend)
+        self.playwright = None
+        self.browser = None
+        self.context = None
 
         # Load configuration
         self.config = self._load_config(config_file)
@@ -170,12 +184,27 @@ a:hover {{ text-decoration:underline; }}
             return original_html
 
     async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
+        if self.backend == 'playwright':
+            if not PLAYWRIGHT_AVAILABLE:
+                raise ImportError("Playwright not installed. Install with: pip install playwright && playwright install")
+            self.playwright = await async_playwright().start()
+            self.browser = await self.playwright.chromium.launch(headless=True)
+            self.context = await self.browser.new_context()
+        else:
+            self.session = aiohttp.ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
+        if self.backend == 'playwright':
+            if self.context:
+                await self.context.close()
+            if self.browser:
+                await self.browser.close()
+            if self.playwright:
+                await self.playwright.stop()
+        else:
+            if self.session:
+                await self.session.close()
 
     async def scrape_single_page(self, url: str) -> Optional[str]:
         """Scrape a single page with retry mechanism, user agent rotation, and rate limiting"""
@@ -185,14 +214,30 @@ a:hover {{ text-decoration:underline; }}
                 if self.config.get('rate_limiting', {}).get('enabled', True):
                     await asyncio.sleep(self.request_delay)
 
-                # User agent rotation
-                headers = {}
-                if self.config.get('user_agent_rotation', {}).get('enabled', True):
-                    headers['User-Agent'] = random.choice(self.user_agents)
+                if self.backend == 'playwright':
+                    # Playwright backend
+                    page = await self.context.new_page()
 
-                async with self.session.get(url, headers=headers) as response:
-                    response.raise_for_status()
-                    return await response.text()
+                    # Set user agent
+                    if self.config.get('user_agent_rotation', {}).get('enabled', True):
+                        await page.set_extra_http_headers({
+                            'User-Agent': random.choice(self.user_agents)
+                        })
+
+                    await page.goto(url, wait_until='networkidle')
+                    content = await page.content()
+                    await page.close()
+                    return content
+
+                else:
+                    # aiohttp backend (default)
+                    headers = {}
+                    if self.config.get('user_agent_rotation', {}).get('enabled', True):
+                        headers['User-Agent'] = random.choice(self.user_agents)
+
+                    async with self.session.get(url, headers=headers) as response:
+                        response.raise_for_status()
+                        return await response.text()
 
             except Exception as e:
                 if attempt < self.max_retries - 1:
@@ -291,7 +336,23 @@ async def main():
     # Use None to auto-generate organized directory structure
     output_dir = None
 
-    async with BookScraper(base_url, output_dir) as scraper:
+    # Backend selection
+    print("Available backends:")
+    print("1. aiohttp (default) - Fast for static sites")
+    print("2. playwright - Recommended for JavaScript sites")
+    backend_choice = input("Choose backend (1 or 2, press Enter for default): ").strip()
+
+    backend = 'aiohttp'  # default
+    if backend_choice == '2':
+        backend = 'playwright'
+        if not PLAYWRIGHT_AVAILABLE:
+            print("❌ Playwright not installed. Install with: pip install playwright && playwright install")
+            print("Falling back to aiohttp...")
+            backend = 'aiohttp'
+
+    print(f"Using backend: {backend}")
+
+    async with BookScraper(base_url, output_dir, backend=backend) as scraper:
         print("Book Scraper - All-in-One Solution")
         print("="*40)
 
