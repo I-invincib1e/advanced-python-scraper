@@ -47,8 +47,8 @@ This scraper was built by **analyzing a simple, effective scraper** and **integr
 
 ### 🔧 **Multi-Backend Support**
 - **aiohttp** - Ultra-fast for static sites
-- **requests-html** - JavaScript rendering
-- **playwright** - Full browser automation for SPAs
+- **playwright** - **Recommended** for JavaScript sites (actively maintained)
+- **requests-html** - Legacy JavaScript support (unmaintained)
 
 ### 📊 **Learned from Simple Scrapers**
 - Smart content extraction (10+ selectors tried)
@@ -176,18 +176,6 @@ scraper-project/
     └── website_name/      # Organized by domain
 ```
 
-## 🎯 **Lessons Learned**
-
-From analyzing the simple scraper, we implemented:
-
-1. **Multiple content selectors** in priority order
-2. **Parser fallback system** for maximum compatibility
-3. **HTML cleaning** before processing
-4. **Smart filename generation** from URLs
-5. **Simple progress indicators** for better UX
-6. **Resource management** with proper cleanup
-7. **Edge case handling** throughout
-
 ## 💡 **Usage Examples**
 
 ### **Static Website Scraping**
@@ -196,16 +184,16 @@ async with AdvancedBookScraper("https://news-site.com", backend="aiohttp") as sc
     await scraper.scrape_multiple_pages(urls)  # Fast bulk scraping
 ```
 
-### **JavaScript-Heavy Sites**
+### **JavaScript-Heavy Sites (Recommended)**
 ```python
-async with AdvancedBookScraper("https://react-app.com", backend="requests-html") as scraper:
-    content = await scraper.scrape_single_page(url)  # Renders JS
+async with AdvancedBookScraper("https://react-app.com", backend="playwright") as scraper:
+    content = await scraper.scrape_single_page(url)  # Full browser rendering
 ```
 
-### **Complex SPAs**
+### **Legacy JavaScript Support**
 ```python
-async with AdvancedBookScraper("https://complex-app.com", backend="playwright") as scraper:
-    content = await scraper.scrape_single_page(url)  # Full browser
+async with AdvancedBookScraper("https://legacy-site.com", backend="requests-html") as scraper:
+    content = await scraper.scrape_single_page(url)  # Basic JS rendering
 ```
 
 ## 🔧 **Extending the Scraper**
