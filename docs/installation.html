@@ -49,22 +49,25 @@ pip install aiohttp beautifulsoup4 tqdm pyyaml
 
         <h3>Backend-Specific Dependencies (Optional)</h3>
 
-        <h4>For JavaScript Rendering:</h4>
-        <div class="code-block">
-pip install requests-html
-        </div>
-
-        <h4>For Full Browser Automation:</h4>
-        <div class="code-block">
+<h4>For JavaScript Rendering (Recommended):</h4>
+<div class="code-block">
 pip install playwright
 playwright install  # Install browser binaries
-        </div>
+</div>
+<div class="note">
+    <strong>💡 Recommendation:</strong> Use Playwright over requests-html for JavaScript sites. Playwright is actively maintained, faster, and more reliable.
+</div>
 
-        <h4>Install All Backends:</h4>
-        <div class="code-block">
-pip install aiohttp beautifulsoup4 tqdm pyyaml requests-html playwright
+<h4>For JavaScript Rendering (Legacy):</h4>
+<div class="code-block">
+pip install requests-html  # Not recommended - unmaintained
+</div>
+
+<h4>Install All Backends:</h4>
+<div class="code-block">
+pip install aiohttp beautifulsoup4 tqdm pyyaml playwright
 playwright install
-        </div>
+</div>
 
         <h2>✅ Verification</h2>
 
