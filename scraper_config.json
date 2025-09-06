@@ -1,0 +1,16 @@
+{
+  "rate_limiting": {
+    "delay": 0.2,
+    "enabled": true
+  },
+  "retry": {
+    "max_attempts": 5,
+    "backoff_factor": 1.0
+  },
+  "user_agent_rotation": {
+    "enabled": true
+  },
+  "concurrency": {
+    "max_concurrent": 8
+  }
+}
